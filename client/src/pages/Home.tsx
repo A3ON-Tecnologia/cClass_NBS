@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   CornerDownLeft,
   CornerDownRight,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -442,6 +443,17 @@ export default function Home() {
                 >
                   Exportar para Excel
                 </Button>
+                {user?.is_admin && (
+                  <Link href="/admin">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full text-slate-400 hover:text-white hover:bg-slate-800"
+                    >
+                      <Settings size={20} />
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
           </div>

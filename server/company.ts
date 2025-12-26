@@ -216,3 +216,31 @@ export async function unlinkUserCompanyHandler(req: AuthRequest, res: Response) 
       .json({ error: "Erro ao remover associação usuário × empresa." });
   }
 }
+
+export async function deleteCompanyHandler(req: AuthRequest, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "ID de empresa inválido." });
+    }
+
+    const [result] = await pool.query(
+      "DELETE FROM companies WHERE id = ?",
+      [id],
+    );
+
+    const deleted =
+      typeof (result as any).affectedRows === "number"
+        ? (result as any).affectedRows
+        : 0;
+
+    if (deleted === 0) {
+      return res.status(404).json({ error: "Empresa não encontrada." });
+    }
+
+    return res.status(200).json({ deleted: id });
+  } catch (err) {
+    console.error("Erro ao excluir empresa:", err);
+    return res.status(500).json({ error: "Erro ao excluir empresa." });
+  }
+}

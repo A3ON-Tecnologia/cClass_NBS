@@ -12,6 +12,9 @@ import {
   requireAdmin,
   createUserHandler,
   listUsersHandler,
+  updateUserHandler,
+  deleteUserHandler,
+  getUserCompaniesHandler,
 } from "./auth.js";
 import {
   ensureCompanyTable,
@@ -21,6 +24,7 @@ import {
   linkUserCompanyHandler,
   unlinkUserCompanyHandler,
   updateCompanyHandler,
+  deleteCompanyHandler,
 } from "./company.js";
 import type { TabelaItem } from "./types.js";
 import {
@@ -81,12 +85,21 @@ async function startServer() {
   app.post("/api/login", loginHandler);
   app.post("/api/users", authMiddleware, requireAdmin, createUserHandler);
   app.get("/api/users", authMiddleware, requireAdmin, listUsersHandler);
+  app.put("/api/users/:id", authMiddleware, requireAdmin, updateUserHandler);
+  app.delete("/api/users/:id", authMiddleware, requireAdmin, deleteUserHandler);
+  app.get("/api/users/:id/companies", authMiddleware, requireAdmin, getUserCompaniesHandler);
   app.post("/api/companies", authMiddleware, requireAdmin, createCompanyHandler);
   app.put(
     "/api/companies/:id",
     authMiddleware,
     requireAdmin,
     updateCompanyHandler,
+  );
+  app.delete(
+    "/api/companies/:id",
+    authMiddleware,
+    requireAdmin,
+    deleteCompanyHandler,
   );
   app.get("/api/companies", authMiddleware, listCompaniesHandler);
   app.post(

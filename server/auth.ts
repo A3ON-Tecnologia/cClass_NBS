@@ -215,3 +215,116 @@ export async function listUsersHandler(req: AuthRequest, res: Response) {
     return res.status(500).json({ error: "Erro ao listar usuários." });
   }
 }
+
+export async function updateUserHandler(req: AuthRequest, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "ID de usuário inválido." });
+    }
+
+    const { username, password, is_admin } = req.body as {
+      username?: string;
+      password?: string;
+      is_admin?: boolean;
+    };
+
+    if (!username) {
+      return res.status(400).json({ error: "Usuário é obrigatório." });
+    }
+
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      return res.status(400).json({ error: "Usuário é obrigatório." });
+    }
+
+    // Check if username is taken by another user
+    const [existing] = await pool.query<User[]>(
+      "SELECT id FROM users WHERE username = ? AND id != ? LIMIT 1",
+      [trimmedUsername, id],
+    );
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "Nome de usuário já está em uso." });
+    }
+
+    const isAdminFlag = is_admin ? 1 : 0;
+
+    if (password && password.trim()) {
+      const password_hash = await bcrypt.hash(password, 10);
+      await pool.query(
+        "UPDATE users SET username = ?, password_hash = ?, is_admin = ? WHERE id = ?",
+        [trimmedUsername, password_hash, isAdminFlag, id],
+      );
+    } else {
+      await pool.query(
+        "UPDATE users SET username = ?, is_admin = ? WHERE id = ?",
+        [trimmedUsername, isAdminFlag, id],
+      );
+    }
+
+    return res.status(200).json({
+      id,
+      username: trimmedUsername,
+      is_admin: !!isAdminFlag,
+    });
+  } catch (err) {
+    console.error("Erro ao atualizar usuário:", err);
+    return res.status(500).json({ error: "Erro ao atualizar usuário." });
+  }
+}
+
+export async function deleteUserHandler(req: AuthRequest, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "ID de usuário inválido." });
+    }
+
+    // Prevent deleting yourself
+    if (req.user?.id === id) {
+      return res.status(400).json({ error: "Você não pode excluir a si mesmo." });
+    }
+
+    const [result] = await pool.query(
+      "DELETE FROM users WHERE id = ?",
+      [id],
+    );
+
+    const deleted =
+      typeof (result as any).affectedRows === "number"
+        ? (result as any).affectedRows
+        : 0;
+
+    if (deleted === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+
+    return res.status(200).json({ deleted: id });
+  } catch (err) {
+    console.error("Erro ao excluir usuário:", err);
+    return res.status(500).json({ error: "Erro ao excluir usuário." });
+  }
+}
+
+export async function getUserCompaniesHandler(req: AuthRequest, res: Response) {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isFinite(userId)) {
+      return res.status(400).json({ error: "ID de usuário inválido." });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT c.id, c.name, c.cnpj
+       FROM companies c
+       INNER JOIN user_companies uc ON uc.company_id = c.id
+       WHERE uc.user_id = ?
+       ORDER BY c.name ASC`,
+      [userId],
+    );
+
+    return res.json(rows);
+  } catch (err) {
+    console.error("Erro ao buscar empresas do usuário:", err);
+    return res.status(500).json({ error: "Erro ao buscar empresas do usuário." });
+  }
+}

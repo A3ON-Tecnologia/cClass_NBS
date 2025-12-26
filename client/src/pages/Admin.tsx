@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "wouter";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -238,9 +239,16 @@ export default function Admin() {
               Usuário: {user.username} {isAdminUser ? "(administrador)" : "(comum)"}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={logout}>
-            Sair
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href="/home">
+              <Button variant="outline" size="sm">
+                Página inicial
+              </Button>
+            </Link>
+            <Button variant="outline" size="sm" onClick={logout}>
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -344,8 +352,8 @@ export default function Admin() {
                     {submittingCompany
                       ? "Salvando..."
                       : editingCompanyId
-                      ? "Salvar alterações"
-                      : "Cadastrar"}
+                        ? "Salvar alterações"
+                        : "Cadastrar"}
                   </Button>
                 </div>
               </form>

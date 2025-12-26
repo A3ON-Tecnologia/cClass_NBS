@@ -6,8 +6,9 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import Admin from "./pages/Admin";
 import NBSQuery from "./pages/NBSQuery";
+import UsersPage from "./pages/admin/UsersPage";
+import CompaniesPage from "./pages/admin/CompaniesPage";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 function PrivateRoute({
@@ -35,7 +36,15 @@ function Router() {
       <Route path={"/consulta-nbs"} component={() => <PrivateRoute component={NBSQuery} />} />
       <Route
         path={"/admin"}
-        component={() => <PrivateRoute component={Admin} requireAdmin />}
+        component={() => <Redirect to="/admin/users" />}
+      />
+      <Route
+        path={"/admin/users"}
+        component={() => <PrivateRoute component={UsersPage} requireAdmin />}
+      />
+      <Route
+        path={"/admin/companies"}
+        component={() => <PrivateRoute component={CompaniesPage} requireAdmin />}
       />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
@@ -65,3 +74,4 @@ function App() {
 }
 
 export default App;
+
