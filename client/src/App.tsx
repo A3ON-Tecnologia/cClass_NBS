@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import NBSQuery from "./pages/NBSQuery";
+import LC214Query from "./pages/LC214Query";
 import UsersPage from "./pages/admin/UsersPage";
 import CompaniesPage from "./pages/admin/CompaniesPage";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -34,6 +35,7 @@ function Router() {
       <Route path={"/login"} component={Login} />
       <Route path={"/home"} component={() => <PrivateRoute component={Home} />} />
       <Route path={"/consulta-nbs"} component={() => <PrivateRoute component={NBSQuery} />} />
+      <Route path={"/consulta-lc214"} component={() => <PrivateRoute component={LC214Query} />} />
       <Route
         path={"/admin"}
         component={() => <Redirect to="/admin/users" />}

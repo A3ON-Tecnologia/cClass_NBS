@@ -435,6 +435,14 @@ export default function Home() {
                     Consulta NBS
                   </Button>
                 </Link>
+                <Link href="/consulta-lc214">
+                  <Button
+                    variant="outline"
+                    className="rounded-full border-amber-500 text-amber-500 bg-white hover:bg-amber-50"
+                  >
+                    Consulta LC 214/2025
+                  </Button>
+                </Link>
                 <Button
                   variant="outline"
                   className="rounded-full border-slate-500 text-slate-100 hover:bg-slate-800"

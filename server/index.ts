@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import {
@@ -117,6 +118,23 @@ async function startServer() {
 
   // Endpoint NBS
   app.get("/api/nbs", authMiddleware, listNbsHandler);
+
+  // Endpoint LC 214/2025 - Lei Complementar da Reforma Tributária
+  app.get("/api/lc214", authMiddleware, async (_req, res) => {
+    try {
+      const dataPath = path.resolve(__dirname, "..", "Dados", "lc214-data.json");
+
+      if (!fs.existsSync(dataPath)) {
+        return res.status(404).json({ error: "Dados da LC 214/2025 não encontrados." });
+      }
+
+      const data = JSON.parse(fs.readFileSync(dataPath, "utf-8"));
+      return res.json(data);
+    } catch (error) {
+      console.error("Erro ao carregar LC 214:", error);
+      return res.status(500).json({ error: "Erro ao carregar dados da LC 214/2025." });
+    }
+  });
 
   // Upload de planilha XLSX e conversão para o formato esperado pelo frontend
   app.post(
