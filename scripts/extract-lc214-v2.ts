@@ -64,7 +64,28 @@ async function extractLC214() {
 
     for (let i = 0; i < matches.length; i++) {
         const current = matches[i];
-        const nextIndex = i < matches.length - 1 ? matches[i + 1].index : textoCompleto.length;
+        let nextIndex = i < matches.length - 1 ? matches[i + 1].index : textoCompleto.length;
+
+        // Se for o último artigo, verificar se existem anexos e cortar antes deles
+        if (i === matches.length - 1) {
+            // Tenta encontrar "ANEXO I" de várias formas
+            const anexoRegex = /(\n|\r| )+ANEXO I(\n|\r| )+/g;
+            anexoRegex.lastIndex = current.index;
+            const anexoMatch = anexoRegex.exec(textoCompleto);
+
+            if (anexoMatch && anexoMatch.index < nextIndex) {
+                nextIndex = anexoMatch.index;
+            }
+
+            // Também truncar assinaturas comuns ao final da lei (Brasília, [data])
+            const brasiliaIndex = textoCompleto.lastIndexOf('Brasília,', nextIndex);
+            if (brasiliaIndex !== -1 && brasiliaIndex > current.index) {
+                // Verificar se "Brasília" está perto do fim do texto capturado
+                if (nextIndex - brasiliaIndex < 1000) {
+                    nextIndex = brasiliaIndex;
+                }
+            }
+        }
 
         const conteudoArtigo = textoCompleto.slice(current.index, nextIndex).trim();
 

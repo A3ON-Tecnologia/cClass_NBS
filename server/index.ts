@@ -136,6 +136,23 @@ async function startServer() {
     }
   });
 
+  // Endpoint LC 214/2025 - ANEXOS
+  app.get("/api/lc214/anexos", authMiddleware, async (req, res) => {
+    try {
+      const dataPath = path.resolve(__dirname, "..", "Dados", "lc214-anexos.json");
+
+      if (!fs.existsSync(dataPath)) {
+        return res.status(404).json({ error: "Anexos da LC 214/2025 não encontrados." });
+      }
+
+      const data = JSON.parse(fs.readFileSync(dataPath, "utf-8"));
+      return res.json(data);
+    } catch (error) {
+      console.error("Erro ao carregar anexos da LC 214:", error);
+      return res.status(500).json({ error: "Erro ao carregar anexos da LC 214/2025." });
+    }
+  });
+
   // Upload de planilha XLSX e conversão para o formato esperado pelo frontend
   app.post(
     "/upload",

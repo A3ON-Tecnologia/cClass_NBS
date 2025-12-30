@@ -10,6 +10,16 @@ interface Artigo {
     titulo: string;
     conteudo: string;
     textoCompleto: string;
+    isAnexo?: boolean;
+    anexoId?: string;
+}
+
+interface Anexo {
+    id: string;
+    titulo: string;
+    subtitulo: string;
+    conteudoTexto: string; // Adicionado para busca performática
+    conteudoHtml: string;
 }
 
 interface LC214Data {
@@ -26,27 +36,44 @@ export default function LC214Query() {
     const [carregando, setCarregando] = useState(true);
     const [termoBusca, setTermoBusca] = useState("");
     const [buscaArtigo, setBuscaArtigo] = useState("");
-    const [tipoBusca, setTipoBusca] = useState<"texto" | "artigo">("texto");
+    const [buscaAnexo, setBuscaAnexo] = useState("");
+    const [tipoBusca, setTipoBusca] = useState<"texto" | "artigo" | "anexo">("texto");
     const [artigos, setArtigos] = useState<Artigo[]>([]);
-    const [artigosExpandidos, setArtigosExpandidos] = useState<Set<number>>(new Set());
+    const [artigosExpandidos, setArtigosExpandidos] = useState<Set<number | string>>(new Set());
+    const [erro, setErro] = useState<string | null>(null);
     const [paginaAtual, setPaginaAtual] = useState(1);
     const itensPorPagina = 10;
+
+    const [anexos, setAnexos] = useState<Anexo[]>([]);
 
     useEffect(() => {
         const carregarDados = async () => {
             try {
-                const response = await fetch("/api/lc214", {
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
-                if (response.ok) {
-                    const data: LC214Data = await response.json();
+                const [resArtigos, resAnexos] = await Promise.all([
+                    fetch("/api/lc214", {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    }),
+                    fetch("/api/lc214/anexos", {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    })
+                ]);
+
+                if (resArtigos.ok) {
+                    const data: LC214Data = await resArtigos.json();
                     setDados(data);
                     setArtigos(data.artigos);
                 }
+
+                if (resAnexos.ok) {
+                    const dataAnexos: Anexo[] = await resAnexos.json();
+                    setAnexos(dataAnexos);
+                }
+                if (!resArtigos.ok || !resAnexos.ok) {
+                    setErro("Não foi possível carregar todos os dados da LC 214/2025. Verifique sua conexão ou tente novamente mais tarde.");
+                }
             } catch (error) {
                 console.error("Erro ao carregar dados da LC 214:", error);
+                setErro("Ocorreu um erro ao carregar os dados. Por favor, tente novamente.");
             } finally {
                 setCarregando(false);
             }
@@ -54,6 +81,14 @@ export default function LC214Query() {
 
         carregarDados();
     }, []);
+
+    const romanMap: Record<string, string> = {
+        "1": "I", "2": "II", "3": "III", "4": "IV", "5": "V",
+        "6": "VI", "7": "VII", "8": "VIII", "9": "IX", "10": "X",
+        "11": "XI", "12": "XII", "13": "XIII", "14": "XIV", "15": "XV",
+        "16": "XVI", "17": "XVII", "18": "XVIII", "19": "XIX", "20": "XX",
+        "21": "XXI", "22": "XXII", "23": "XXIII", "24": "XXIV", "25": "XXV"
+    };
 
     const artigosFiltrados = useMemo(() => {
         if (!dados) return [];
@@ -66,15 +101,55 @@ export default function LC214Query() {
             return [];
         }
 
+        if (tipoBusca === "anexo" && buscaAnexo.trim()) {
+            const termo = buscaAnexo.toLowerCase().trim();
+            const apenasNumero = termo.replace('anexo', '').trim();
+            const romanEquivalent = (romanMap[apenasNumero] || apenasNumero).toLowerCase();
+
+            const anexosEncontrados = anexos.filter((anexo) => {
+                return anexo.id.toLowerCase().includes(termo.replace(/\s+/g, '-')) ||
+                    anexo.titulo.toLowerCase().includes(termo) ||
+                    anexo.subtitulo.toLowerCase().includes(termo);
+            });
+
+            if (anexosEncontrados.length > 0) {
+                return anexosEncontrados.map(anexo => ({
+                    numero: -1,
+                    titulo: anexo.titulo,
+                    conteudo: anexo.subtitulo + " " + (anexo.conteudoTexto ? anexo.conteudoTexto.substring(0, 300) : ""),
+                    textoCompleto: anexo.conteudoHtml,
+                    isAnexo: true,
+                    anexoId: anexo.id,
+                    html: anexo.conteudoHtml
+                }));
+            }
+            return [];
+        }
+
         if (tipoBusca === "texto" && termoBusca.trim()) {
             const termo = termoBusca.toLowerCase().trim();
-            return dados.artigos.filter((art) =>
+            const resArtigos = (dados.artigos || []).filter((art) =>
                 art.conteudo.toLowerCase().includes(termo)
             );
+
+            const resAnexos = (anexos || []).filter((anexo) => {
+                const searchIn = (anexo.titulo + " " + anexo.subtitulo + " " + (anexo.conteudoTexto || "")).toLowerCase();
+                return searchIn.includes(termo);
+            }).map(anexo => ({
+                numero: -1,
+                titulo: anexo.titulo,
+                conteudo: anexo.subtitulo + " " + (anexo.conteudoTexto ? anexo.conteudoTexto.substring(0, 300) : ""),
+                textoCompleto: anexo.conteudoHtml,
+                isAnexo: true,
+                anexoId: anexo.id,
+                html: anexo.conteudoHtml
+            }));
+
+            return [...resArtigos, ...resAnexos];
         }
 
         return dados.artigos;
-    }, [dados, termoBusca, buscaArtigo, tipoBusca]);
+    }, [dados, termoBusca, buscaArtigo, buscaAnexo, tipoBusca]);
 
     const artigosPaginados = useMemo(() => {
         const inicio = (paginaAtual - 1) * itensPorPagina;
@@ -101,7 +176,7 @@ export default function LC214Query() {
 
         return partes.map((parte, index) =>
             regex.test(parte) ? (
-                <mark key={index} className="bg-yellow-300 text-slate-900 px-0.5 rounded">
+                <mark key={index} className="bg-amber-500/30 text-amber-200 px-0.5 rounded border border-amber-500/50">
                     {parte}
                 </mark>
             ) : (
@@ -113,6 +188,8 @@ export default function LC214Query() {
     const handleBuscaChange = (valor: string) => {
         if (tipoBusca === "artigo") {
             setBuscaArtigo(valor);
+        } else if (tipoBusca === "anexo") {
+            setBuscaAnexo(valor);
         } else {
             setTermoBusca(valor);
         }
@@ -121,10 +198,27 @@ export default function LC214Query() {
 
     if (carregando) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-                    <p className="text-slate-600">Carregando Lei Complementar 214/2025...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto mb-4" />
+                    <p className="text-slate-400">Carregando Lei Complementar 214/2025...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (erro) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="text-center max-w-md mx-auto p-8 bg-slate-900 border border-red-500/30 rounded-2xl">
+                    <FileText className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                    <h2 className="text-xl font-bold text-slate-50 mb-2">Erro ao carregar dados</h2>
+                    <p className="text-slate-400 mb-6">{erro}</p>
+                    <Link href="/home">
+                        <Button className="bg-slate-800 hover:bg-slate-700 text-slate-50">
+                            Voltar para Home
+                        </Button>
+                    </Link>
                 </div>
             </div>
         );
@@ -182,13 +276,13 @@ export default function LC214Query() {
                         <div className="text-3xl font-bold text-blue-400 mb-2">
                             {artigosFiltrados.length}
                         </div>
-                        <p className="text-slate-300 text-sm">Artigos Encontrados</p>
+                        <p className="text-slate-300 text-sm">Resultados Encontrados</p>
                     </div>
                     <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/30 rounded-xl p-6 text-center">
                         <div className="text-3xl font-bold text-emerald-400 mb-2">
-                            IBS/CBS
+                            {anexos.length}
                         </div>
-                        <p className="text-slate-300 text-sm">Reforma Tributária</p>
+                        <p className="text-slate-300 text-sm">Total de Anexos</p>
                     </div>
                 </div>
 
@@ -221,11 +315,28 @@ export default function LC214Query() {
                                 onClick={() => {
                                     setTipoBusca("artigo");
                                     setTermoBusca("");
+                                    setBuscaAnexo("");
                                     setPaginaAtual(1);
                                 }}
                             >
                                 <Hash className="h-4 w-4" />
                                 Buscar por Artigo
+                            </Button>
+                            <Button
+                                variant={tipoBusca === "anexo" ? "default" : "outline"}
+                                className={`flex items-center gap-2 ${tipoBusca === "anexo"
+                                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
+                                    : "text-slate-600 border-slate-300"
+                                    }`}
+                                onClick={() => {
+                                    setTipoBusca("anexo");
+                                    setTermoBusca("");
+                                    setBuscaArtigo("");
+                                    setPaginaAtual(1);
+                                }}
+                            >
+                                <BookOpen className="h-4 w-4" />
+                                Buscar por Anexo
                             </Button>
                         </div>
 
@@ -236,9 +347,11 @@ export default function LC214Query() {
                                 placeholder={
                                     tipoBusca === "artigo"
                                         ? "Digite o número do artigo (ex: 1, 10, 100)..."
-                                        : "Digite um termo para buscar na lei (ex: IBS, CBS, contribuinte)..."
+                                        : tipoBusca === "anexo"
+                                            ? "Digite o número do anexo (ex: I, II, XV)..."
+                                            : "Digite um termo para buscar na lei (ex: IBS, CBS, contribuinte)..."
                                 }
-                                value={tipoBusca === "artigo" ? buscaArtigo : termoBusca}
+                                value={tipoBusca === "artigo" ? buscaArtigo : tipoBusca === "anexo" ? buscaAnexo : termoBusca}
                                 onChange={(e) => handleBuscaChange(e.target.value)}
                                 className="pl-10 bg-slate-50 border-slate-200"
                             />
@@ -261,24 +374,43 @@ export default function LC214Query() {
                             </p>
                         </div>
                     ) : (
-                        artigosPaginados.map((artigo) => {
-                            const isExpandido = artigosExpandidos.has(artigo.numero);
+                        artigosPaginados.map((item: any, idx: number) => {
+                            const isAnexo = item.numero === -1;
+                            const id = isAnexo ? `anexo-${item.anexoId}` : `artigo-${item.numero}`;
+                            const isExpandido = artigosExpandidos.has(isAnexo ? (item.anexoId as any) : item.numero);
+
+                            const toggleExpandir = () => {
+                                const key = isAnexo ? (item.anexoId as any) : item.numero;
+                                const novos = new Set(artigosExpandidos);
+                                if (novos.has(key)) {
+                                    novos.delete(key);
+                                } else {
+                                    novos.add(key);
+                                }
+                                setArtigosExpandidos(novos);
+                            };
+
                             const conteudoExibir = isExpandido
-                                ? artigo.conteudo
-                                : artigo.conteudo.slice(0, 500) + (artigo.conteudo.length > 500 ? "..." : "");
+                                ? item.conteudo
+                                : item.conteudo.slice(0, 500) + (item.conteudo.length > 500 ? "..." : "");
+
+                            const termoDestaque = tipoBusca === "texto" ? termoBusca : tipoBusca === "anexo" ? buscaAnexo : "";
 
                             return (
                                 <div
-                                    key={artigo.numero}
+                                    key={`${id}-${idx}`}
                                     className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden transition-all hover:shadow-lg"
                                 >
                                     <button
-                                        onClick={() => toggleExpandirArtigo(artigo.numero)}
+                                        onClick={toggleExpandir}
                                         className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white hover:from-slate-100 hover:to-slate-50 transition-colors"
                                     >
                                         <div className="flex items-center gap-4">
-                                            <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-4 py-2 rounded-lg text-lg shadow-sm">
-                                                Art. {artigo.numero}º
+                                            <span className={`bg-gradient-to-r text-white font-bold px-4 py-2 rounded-lg text-lg shadow-sm ${isAnexo
+                                                ? "from-emerald-500 to-teal-500"
+                                                : "from-amber-500 to-orange-500"
+                                                }`}>
+                                                {item.titulo}
                                             </span>
                                             <span className="text-slate-600 text-sm hidden md:block">
                                                 Clique para {isExpandido ? "recolher" : "expandir"}
@@ -292,14 +424,22 @@ export default function LC214Query() {
                                     </button>
                                     <div className="px-6 py-4 border-t border-slate-100">
                                         <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap">
-                                            {tipoBusca === "texto" && termoBusca.trim()
-                                                ? destacarTexto(conteudoExibir, termoBusca)
-                                                : conteudoExibir}
+                                            {isAnexo && isExpandido ? (
+                                                <div
+                                                    className="anexo-html-content overflow-x-auto"
+                                                    dangerouslySetInnerHTML={{ __html: item.html }}
+                                                />
+                                            ) : (
+                                                termoDestaque.trim()
+                                                    ? destacarTexto(conteudoExibir, termoDestaque)
+                                                    : conteudoExibir
+                                            )}
                                         </div>
-                                        {artigo.conteudo.length > 500 && !isExpandido && (
+                                        {item.conteudo.length > 500 && !isExpandido && (
                                             <button
-                                                onClick={() => toggleExpandirArtigo(artigo.numero)}
-                                                className="mt-3 text-amber-600 hover:text-amber-700 font-medium text-sm flex items-center gap-1"
+                                                onClick={toggleExpandir}
+                                                className={`mt-3 font-medium text-sm flex items-center gap-1 ${isAnexo ? "text-emerald-600 hover:text-emerald-700" : "text-amber-600 hover:text-amber-700"
+                                                    }`}
                                             >
                                                 Ver mais
                                                 <ChevronDown className="h-4 w-4" />

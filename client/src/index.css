@@ -175,3 +175,24 @@
     }
   }
 }
+.anexo-html-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: inherit;
+}
+.anexo-html-content th,
+.anexo-html-content td {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.anexo-html-content th {
+  background-color: var(--muted);
+  font-weight: 600;
+}
+.anexo-html-content p {
+  margin: 0.5rem 0;
+}
