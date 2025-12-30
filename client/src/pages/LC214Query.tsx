@@ -176,7 +176,7 @@ export default function LC214Query() {
 
         return partes.map((parte, index) =>
             regex.test(parte) ? (
-                <mark key={index} className="bg-amber-500/30 text-amber-200 px-0.5 rounded border border-amber-500/50">
+                <mark key={index} className="bg-amber-200 text-amber-900 px-0.5 rounded font-semibold border border-amber-300">
                     {parte}
                 </mark>
             ) : (
