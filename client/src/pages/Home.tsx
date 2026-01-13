@@ -406,14 +406,16 @@ export default function Home() {
                   Classificação consolidada de cClasstrib por NCM e CFOP.
                   Identificação automática de inconsistências e sugestões fiscais.
                 </p>
-                <a
-                  href="https://ibsecbspricetax.streamlit.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block text-xs md:text-sm font-semibold text-white hover:text-sky-200 underline decoration-sky-500/70"
-                >
-                  Faça sua Análise: PRICETAX • IBS/CBS 2026 &amp; Ranking SPED
-                </a>
+                {user?.is_admin && (
+                  <a
+                    href="https://ibsecbspricetax.streamlit.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-xs md:text-sm font-semibold text-white hover:text-sky-200 underline decoration-sky-500/70"
+                  >
+                    Faça sua Análise: PRICETAX • IBS/CBS 2026 &amp; Ranking SPED
+                  </a>
+                )}
 
               </div>
             </div>
